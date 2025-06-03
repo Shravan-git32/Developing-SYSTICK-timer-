@@ -1,0 +1,50 @@
+#include "stm32f4xx.h"
+#include <stdint.h>
+
+#define GPIODEN        (1U<<3)
+#define GPIOAEN        (1U<<0)
+#define PIN13          (1U<<13)   // ORANGE LED (PD13)
+#define LED            PIN13
+#define USER_BUTTON    (1U<<0)    // USER button (PA0)
+
+#define SYSTICK_LOAD_VALUE 16000
+#define SYSTICK_ENABLE     (1U<<0)
+#define SYSTICK_CLKSOURCE  (1U<<2)
+#define SYSTICK_COUNTFLAG  (1U<<16)
+
+void sysTickDelayms(int delay);
+
+int main(void) {
+    // Enable clock for GPIOD and GPIOA
+    RCC->AHB1ENR |= GPIODEN | GPIOAEN;
+
+    // Set PD13 as output
+    GPIOD->MODER |= (1U << 26);
+    GPIOD->MODER &= ~(1U << 27);
+
+    // Set PA0 as input (reset state, no need to modify)
+
+    while (1) {
+        // Check if button is pressed (active-low or active-high depending on board)
+        if (GPIOA->IDR & USER_BUTTON) {
+            // Blink LED every 2 seconds for 20 seconds (i.e., 10 times)
+            for (int i = 0; i < 10; i++) {
+                GPIOD->ODR ^= LED;
+                sysTickDelayms(2000);
+            }
+            // Ensure LED is OFF after blinking
+            GPIOD->ODR &= ~LED;
+        }
+    }
+}
+
+void sysTickDelayms(int delay) {
+    SysTick->LOAD = SYSTICK_LOAD_VALUE;  // 16,000 = 1 ms at 16 MHz
+    SysTick->VAL = 0;
+    SysTick->CTRL = SYSTICK_ENABLE | SYSTICK_CLKSOURCE;
+
+    for (int i = 0; i < delay; i++) {
+        while ((SysTick->CTRL & SYSTICK_COUNTFLAG) == 0) {}
+    }
+    SysTick->CTRL = 0;
+}
