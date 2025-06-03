@@ -1,0 +1,33 @@
+#include "stm32f4xx.h"
+#include <stdint.h>
+#define GPIODEN			(1U<<3)
+#define PIN12				(1U<<12)
+#define LED			 	PIN12
+#define SYSTICK_LOAD_VALUE		16000
+#define SYSTICK_ENABLE		(1U<<0)
+#define SYSTICK_CLKSOURCE		(1U<<2)
+#define SYSTICK_COUNTFLAG		(1U<<16)
+void sysTickDelayms(int delay);
+int main(void)
+{
+	RCC->AHB1ENR |= GPIODEN;
+	GPIOD->MODER |= (1U<<24);
+	GPIOD->MODER &= ~(1U<<25);
+	while(1){
+		GPIOD->ODR ^= LED;
+		sysTickDelayms(1000);
+	}
+}
+void sysTickDelayms(int delay){
+	/* Reload with number of clocks per milliseconds */
+	SysTick->LOAD = SYSTICK_LOAD_VALUE;
+	/* Clear systick current value register */
+	SysTick->VAL = 0;
+	/* Enable systick and select internal clock source */
+	SysTick->CTRL = SYSTICK_ENABLE | SYSTICK_CLKSOURCE;
+	for(int i=0 ; i<delay; i++){
+		while((SysTick->CTRL & SYSTICK_COUNTFLAG) == 0){ }
+	}
+	/*Disable the SysTick*/
+	SysTick->CTRL = 0;
+}
